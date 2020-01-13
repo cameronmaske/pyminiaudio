@@ -103,6 +103,10 @@ class SeekOrigin(Enum):
     START = lib.ma_seek_origin_start
     CURRENT = lib.ma_seek_origin_current
 
+class ShareMode(Enum):
+    SHARED = lib.ma_share_mode_shared
+    EXCLUSIVE = lib.ma_share_mode_exclusive
+
 
 PlaybackCallbackGeneratorType = Generator[Union[bytes, array.array], int, None]
 CaptureCallbackGeneratorType = Generator[None, Union[bytes, array.array], None]
@@ -1275,7 +1279,8 @@ class CaptureDevice(AbstractDevice):
     def __init__(self, input_format: SampleFormat = SampleFormat.SIGNED16, nchannels: int = 2,
                  sample_rate: int = 44100, buffersize_msec: int = 200, device_id: Union[ffi.CData, None] = None,
                  callback_periods: int = 0, backends: Optional[List[Backend]] = None,
-                 thread_prio: ThreadPriority = ThreadPriority.HIGHEST, app_name: str = "") -> None:
+                 thread_prio: ThreadPriority = ThreadPriority.HIGHEST,
+                 share_mode: ShareMode = ShareMode.SHARED, app_name: str = "") -> None:
         super().__init__()
         self.format = input_format
         self.sample_width = _width_from_format(input_format)
@@ -1288,6 +1293,7 @@ class CaptureDevice(AbstractDevice):
         self._devconfig.sampleRate = self.sample_rate
         self._devconfig.capture.channels = self.nchannels
         self._devconfig.capture.format = self.format.value
+        self._devconfig.capture.shareMode = share_mode.value
         self._devconfig.capture.pDeviceID = device_id or ffi.NULL
         self._devconfig.bufferSizeInMilliseconds = self.buffersize_msec
         self._devconfig.pUserData = self.userdata_ptr
@@ -1330,7 +1336,8 @@ class PlaybackDevice(AbstractDevice):
     def __init__(self, output_format: SampleFormat = SampleFormat.SIGNED16, nchannels: int = 2,
                  sample_rate: int = 44100, buffersize_msec: int = 200, device_id: Union[ffi.CData, None] = None,
                  callback_periods: int = 0, backends: Optional[List[Backend]] = None,
-                 thread_prio: ThreadPriority = ThreadPriority.HIGHEST, app_name: str = "") -> None:
+                 thread_prio: ThreadPriority = ThreadPriority.HIGHEST,
+                 share_mode: ShareMode = ShareMode.SHARED, app_name: str = "") -> None:
         super().__init__()
         self.format = output_format
         self.sample_width = _width_from_format(output_format)
@@ -1343,6 +1350,7 @@ class PlaybackDevice(AbstractDevice):
         self._devconfig.sampleRate = self.sample_rate
         self._devconfig.playback.channels = self.nchannels
         self._devconfig.playback.format = self.format.value
+        self._devconfig.playback.shareMode = share_mode.value
         self._devconfig.playback.pDeviceID = device_id or ffi.NULL
         self._devconfig.bufferSizeInMilliseconds = self.buffersize_msec
         self._devconfig.pUserData = self.userdata_ptr
@@ -1388,8 +1396,10 @@ class PlaybackDevice(AbstractDevice):
 class DuplexStream(AbstractDevice):
     """Joins a capture device and a playback device."""
     def __init__(self, playback_format: SampleFormat = SampleFormat.SIGNED16,
-                 playback_channels: int = 2, capture_format: SampleFormat = SampleFormat.SIGNED16,
-                 capture_channels: int = 2, sample_rate: int = 44100, buffersize_msec: int = 200,
+                 playback_channels: int = 2, playback_share_mode: ShareMode = ShareMode.SHARED,
+                 capture_format: SampleFormat = SampleFormat.SIGNED16,
+                 capture_channels: int = 2, capture_share_mode: ShareMode = ShareMode.SHARED,
+                 sample_rate: int = 44100, buffersize_msec: int = 200,
                  playback_device_id: Union[ffi.CData, None] = None, capture_device_id: Union[ffi.CData, None] = None,
                  callback_periods: int = 0, backends: Optional[List[Backend]] = None,
                  thread_prio: ThreadPriority = ThreadPriority.HIGHEST, app_name: str = "") -> None:
@@ -1407,9 +1417,11 @@ class DuplexStream(AbstractDevice):
         self._devconfig.sampleRate = self.sample_rate
         self._devconfig.playback.channels = self.playback_channels
         self._devconfig.playback.format = self.playback_format.value
+        self._devconfig.playback.shareMode = playback_share_mode.value
         self._devconfig.playback.pDeviceID = playback_device_id or ffi.NULL
         self._devconfig.capture.channels = self.capture_channels
         self._devconfig.capture.format = self.capture_format.value
+        self._devconfig.capture.shareMode = capture_share_mode.value
         self._devconfig.capture.pDeviceID = capture_device_id or ffi.NULL
         self._devconfig.bufferSizeInMilliseconds = self.buffersize_msec
         self._devconfig.pUserData = self.userdata_ptr
