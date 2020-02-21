@@ -9657,7 +9657,7 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                     continue;   /* Nothing available. Keep waiting. */
                 }
                 /* Map the data buffer in preparation for sending to the client. */
-                mappedDeviceBufferSizeInFramesCapture = framesAvailableCapture; // TODO: Look into this, I'm not sure GetBuffer takes this into account.
+                mappedBufferSizeInFramesCapture = framesAvailableCapture; // TODO: Look into this, I'm not sure GetBuffer takes this into account.
 
                 hr = ma_IAudioCaptureClient_GetBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, (BYTE**)&pMappedBufferCapture, &mappedBufferSizeInFramesCapture, &flagsCapture, NULL, NULL);
                 if (FAILED(hr)) {
@@ -9683,7 +9683,9 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                             break;
                         }
                         framesAvailableCapture -= mappedBufferSizeInFramesCapture;
-                        printf("Frames left %d\n", framesAvailableCapture);
+                        #ifdef MA_DEBUG_OUTPUT
+                            printf("Frames left to release %d\n", framesAvailableCapture);
+                        #endif
                         if (framesAvailableCapture > 0) {
                             hr = ma_IAudioCaptureClient_GetBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, (BYTE**)&pMappedBufferCapture, &mappedBufferSizeInFramesCapture, &flagsCapture, NULL, NULL);
                             if (FAILED(hr)) {
