@@ -9654,24 +9654,32 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                 }
 
                 if (framesAvailableCapture < pDevice->wasapi.periodSizeInFramesCapture) {
-                    #ifdef MA_DEBUG_OUTPUT
-                        printf("framesAvailableCapture=%d, pDevice->wasapi.periodSizeInFramesCaptur=%d\n", framesAvailableCapture, pDevice->wasapi.periodSizeInFramesCapture);
-                    #endif
+                    // #ifdef MA_DEBUG_OUTPUT
+                    //     printf("framesAvailableCapture=%d, pDevice->wasapi.periodSizeInFramesCaptur=%d\n", framesAvailableCapture, pDevice->wasapi.periodSizeInFramesCapture);
+                    // #endif
                     continue;   /* Nothing available. Keep waiting. */
                 }
 
                 /* Map the data buffer in preparation for sending to the client. */
                 mappedBufferSizeInFramesCapture = framesAvailableCapture;
                 // printf("mappedBufferSizeInFramesCapture=%d,\n", mappedBufferSizeInFramesCapture);
-                #ifdef MA_DEBUG_OUTPUT
-                    printf("mappedBufferSizeInFramesCapture=%d\n", mappedBufferSizeInFramesCapture);
-                    // printf("mappedBufferSizeInFramesCapture=%d,pDevice->wasapi.periodSizeInFramesCaptur=%d\n", mappedBufferSizeInFramesCapture, pDevice->wasapi.periodSizeInFramesCapture);
-                #endif
+                // #ifdef MA_DEBUG_OUTPUT
+                //     printf("mappedBufferSizeInFramesCapture!=%d\n", mappedBufferSizeInFramesCapture);
+                //     // printf("mappedBufferSizeInFramesCapture=%d,pDevice->wasapi.periodSizeInFramesCaptur=%d\n", mappedBufferSizeInFramesCapture, pDevice->wasapi.periodSizeInFramesCapture);
+                // #endif
                 hr = ma_IAudioCaptureClient_GetBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, (BYTE**)&pMappedBufferCapture, &mappedBufferSizeInFramesCapture, &flagsCapture, NULL, NULL);
                 if (FAILED(hr)) {
                     ma_post_error(pDevice, MA_LOG_LEVEL_ERROR, "[WASAPI] Failed to retrieve internal buffer from capture device in preparation for writing to the device.", MA_FAILED_TO_MAP_DEVICE_BUFFER);
                     exitLoop = MA_TRUE;
                     break;
+                }
+                // printf("flag=%d", flagsCapture);
+                /* Overrun detection. */
+                if ((flagsCapture & MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0) {
+                    /* Glitched. Probably due to an overrun. */
+                    #ifdef MA_DEBUG_OUTPUT
+                        printf("[WASAPI] MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY\n");
+                    #endif
                 }
 
                 /* We should have a buffer at this point. */
