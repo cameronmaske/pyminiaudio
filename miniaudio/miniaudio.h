@@ -9299,6 +9299,7 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
     }
 
     while (ma_device__get_state(pDevice) == MA_STATE_STARTED && !exitLoop) {
+        // printf("yoyo");
         /* We may need to reroute the device. */
         if (ma_device_is_reroute_required__wasapi(pDevice, ma_device_type_playback)) {
             result = ma_device_reroute__wasapi(pDevice, ma_device_type_playback);
@@ -9654,15 +9655,17 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
 
                 if (framesAvailableCapture < pDevice->wasapi.periodSizeInFramesCapture) {
                     #ifdef MA_DEBUG_OUTPUT
-                        /*printf("framesAvailableCapture=%d, pDevice->wasapi.periodSizeInFramesCaptur=%d\n", framesAvailableCapture, pDevice->wasapi.periodSizeInFramesCapture);*/
+                        printf("framesAvailableCapture=%d, pDevice->wasapi.periodSizeInFramesCaptur=%d\n", framesAvailableCapture, pDevice->wasapi.periodSizeInFramesCapture);
                     #endif
                     continue;   /* Nothing available. Keep waiting. */
                 }
 
                 /* Map the data buffer in preparation for sending to the client. */
                 mappedBufferSizeInFramesCapture = framesAvailableCapture;
-                 #ifdef MA_DEBUG_OUTPUT
-                    /*printf("mappedBufferSizeInFramesCapture=%d,\n", mappedBufferSizeInFramesCapture);*/
+                // printf("mappedBufferSizeInFramesCapture=%d,\n", mappedBufferSizeInFramesCapture);
+                #ifdef MA_DEBUG_OUTPUT
+                    printf("mappedBufferSizeInFramesCapture=%d\n", mappedBufferSizeInFramesCapture);
+                    // printf("mappedBufferSizeInFramesCapture=%d,pDevice->wasapi.periodSizeInFramesCaptur=%d\n", mappedBufferSizeInFramesCapture, pDevice->wasapi.periodSizeInFramesCapture);
                 #endif
                 hr = ma_IAudioCaptureClient_GetBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, (BYTE**)&pMappedBufferCapture, &mappedBufferSizeInFramesCapture, &flagsCapture, NULL, NULL);
                 if (FAILED(hr)) {
