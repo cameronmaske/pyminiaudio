@@ -9653,6 +9653,9 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                 }
 
                 if (framesAvailableCapture < pDevice->wasapi.periodSizeInFramesCapture) {
+                    #ifdef MA_DEBUG_OUTPUT
+                        /*printf("framesAvailableCapture=%d, pDevice->wasapi.periodSizeInFramesCaptur=%d\n", framesAvailableCapture, pDevice->wasapi.periodSizeInFramesCapture);*/
+                    #endif
                     continue;   /* Nothing available. Keep waiting. */
                 }
 
