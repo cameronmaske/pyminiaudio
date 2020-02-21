@@ -9661,7 +9661,7 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                 }
 
                 /* Map the data buffer in preparation for sending to the client. */
-                mappedBufferSizeInFramesCapture = framesAvailableCapture;
+                mappedBufferSizeInFramesCapture = framesAvailableCapture; // Is this needed?
                 // printf("mappedBufferSizeInFramesCapture=%d,\n", mappedBufferSizeInFramesCapture);
                 // #ifdef MA_DEBUG_OUTPUT
                 //     printf("mappedBufferSizeInFramesCapture!=%d\n", mappedBufferSizeInFramesCapture);
@@ -9673,20 +9673,33 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                     exitLoop = MA_TRUE;
                     break;
                 }
-                // printf("flag=%d", flagsCapture);
-                /* Overrun detection. */
+
+
                 if ((flagsCapture & MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0) {
                     /* Glitched. Probably due to an overrun. */
                     #ifdef MA_DEBUG_OUTPUT
-                        printf("[WASAPI] MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY (mappedBufferSizeInFramesCapture=%d)\n", mappedBufferSizeInFramesCapture);
+                        printf("[WASAPI] MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY (FramesInGetBuffer=%d, CurrentPadding=%d))\n", mappedBufferSizeInFramesCapture, framesAvailableCapture);
+                    #endif
+                    ma_uint32 remainingFrames;
+                    remainingFrames = framesAvailableCapture - mappedBufferSizeInFramesCapture;
+                    if (remainingFrames > 0) {
+                        // pass
+                    }
+                } else {
+                    #ifdef MA_DEBUG_OUTPUT
+                        if (flagsCapture != 0) {
+                            printf("[WASAPI] Capture Flags: %d\n", flagsCapture);
+                        }
+                        // else {
+                        //     printf("Should match? (FramesInGetBuffer=%d, CurrentPadding=%d)\n", mappedBufferSizeInFramesCapture, framesAvailableCapture);
+                        // }
                     #endif
                 }
 
-                /* We should have a buffer at this point. */
-                ma_device__send_frames_to_client(pDevice, mappedBufferSizeInFramesCapture, pMappedBufferCapture);
-
                 /* At this point we're done with the buffer. */
                 hr = ma_IAudioCaptureClient_ReleaseBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, mappedBufferSizeInFramesCapture);
+                /* We should have a buffer at this point. */
+                ma_device__send_frames_to_client(pDevice, mappedBufferSizeInFramesCapture, pMappedBufferCapture);
                 pMappedBufferCapture = NULL;    /* <-- Important. Not doing this can result in an error once we leave this loop because it will use this to know whether or not a final ReleaseBuffer() needs to be called. */
                 mappedBufferSizeInFramesCapture = 0;
                 if (FAILED(hr)) {
