@@ -15,7 +15,7 @@ def choose_device():
     for d in enumerate(captures):
         print("{num} = {name}".format(num=d[0], name=d[1]['name']))
     # choice = int(input("record from which device? "))
-    return captures[5]
+    return captures[3]
 
 
 if __name__ == "__main__":
@@ -34,11 +34,12 @@ if __name__ == "__main__":
                 import random
                 evt = win32event.CreateEvent(None, 0, 0, None)
                 delay_ms = random.randint(200, 500)
-                delay_ms = 333
+                delay_ms = 500
                 print("Delay of {}".format(delay_ms))
                 win32event.WaitForSingleObject(evt, delay_ms)
             counter += 1
-            # sleep( / 1000)
+            # if counter > after:
+            #     sleep(10 / 1000)
             buffer_chunks.append(data)
 
     selected_device = choose_device()

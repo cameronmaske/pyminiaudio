@@ -9661,7 +9661,7 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                 }
 
                 /* Map the data buffer in preparation for sending to the client. */
-                mappedBufferSizeInFramesCapture = framesAvailableCapture; // Is this needed?
+                mappedBufferSizeInFramesCapture = 10; // Is this needed?
                 // printf("mappedBufferSizeInFramesCapture=%d,\n", mappedBufferSizeInFramesCapture);
                 // #ifdef MA_DEBUG_OUTPUT
                 //     printf("mappedBufferSizeInFramesCapture!=%d\n", mappedBufferSizeInFramesCapture);
@@ -9680,11 +9680,34 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                     #ifdef MA_DEBUG_OUTPUT
                         printf("[WASAPI] MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY (FramesInGetBuffer=%d, CurrentPadding=%d))\n", mappedBufferSizeInFramesCapture, framesAvailableCapture);
                     #endif
-                    ma_uint32 remainingFrames;
-                    remainingFrames = framesAvailableCapture - mappedBufferSizeInFramesCapture;
-                    if (remainingFrames > 0) {
-                        // pass
-                    }
+                    do {
+                        hr = ma_IAudioCaptureClient_ReleaseBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, mappedBufferSizeInFramesCapture);
+                        if (FAILED(hr)) {
+                            #ifdef MA_DEBUG_OUTPUT
+                                printf("ReleaseBuffer (failed)");
+                            #endif
+                            break;
+                        }
+                        framesAvailableCapture -= mappedBufferSizeInFramesCapture;
+                        printf("Frames left %d\n", framesAvailableCapture);
+                        if (framesAvailableCapture > 0) {
+                            hr = ma_IAudioCaptureClient_GetBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, (BYTE**)&pMappedBufferCapture, &mappedBufferSizeInFramesCapture, &flagsCapture, NULL, NULL);
+                            if (FAILED(hr)) {
+                                #ifdef MA_DEBUG_OUTPUT
+                                    printf("GetBuffer (failed)");
+                                #endif
+                                break;
+                            }
+                        } else {
+                            pMappedBufferCapture = NULL;
+                            mappedBufferSizeInFramesCapture = 0;
+                        }
+                    } while (framesAvailableCapture > 1);
+                    // ma_uint32 remainingFrames;
+                    // remainingFrames = framesAvailableCapture - mappedBufferSizeInFramesCapture;
+                    // if (remainingFrames > 0) {
+                    //     // pass
+                    // }
                 } else {
                     #ifdef MA_DEBUG_OUTPUT
                         if (flagsCapture != 0) {
@@ -9696,17 +9719,26 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                     #endif
                 }
 
-                /* At this point we're done with the buffer. */
-                hr = ma_IAudioCaptureClient_ReleaseBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, mappedBufferSizeInFramesCapture);
                 /* We should have a buffer at this point. */
                 ma_device__send_frames_to_client(pDevice, mappedBufferSizeInFramesCapture, pMappedBufferCapture);
-                pMappedBufferCapture = NULL;    /* <-- Important. Not doing this can result in an error once we leave this loop because it will use this to know whether or not a final ReleaseBuffer() needs to be called. */
-                mappedBufferSizeInFramesCapture = 0;
-                if (FAILED(hr)) {
-                    ma_post_error(pDevice, MA_LOG_LEVEL_ERROR, "[WASAPI] Failed to release internal buffer from capture device after reading from the device.", MA_FAILED_TO_UNMAP_DEVICE_BUFFER);
-                    exitLoop = MA_TRUE;
-                    break;
+                if (pMappedBufferCapture != NULL) {
+                    /* At this point we're done with the buffer. */
+                    hr = ma_IAudioCaptureClient_ReleaseBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, mappedBufferSizeInFramesCapture);
+                    pMappedBufferCapture = NULL;    /* <-- Important. Not doing this can result in an error once we leave this loop because it will use this to know whether or not a final ReleaseBuffer() needs to be called. */
+                    mappedBufferSizeInFramesCapture = 0;
+                    if (FAILED(hr)) {
+                        ma_post_error(pDevice, MA_LOG_LEVEL_ERROR, "[WASAPI] Failed to release internal buffer from capture device after reading from the device.", MA_FAILED_TO_UNMAP_DEVICE_BUFFER);
+                        exitLoop = MA_TRUE;
+                        break;
+                    }
                 }
+                // pMappedBufferCapture = NULL;    /* <-- Important. Not doing this can result in an error once we leave this loop because it will use this to know whether or not a final ReleaseBuffer() needs to be called. */
+                // mappedBufferSizeInFramesCapture = 0;
+                // if (FAILED(hr)) {
+                //     ma_post_error(pDevice, MA_LOG_LEVEL_ERROR, "[WASAPI] Failed to release internal buffer from capture device after reading from the device.", MA_FAILED_TO_UNMAP_DEVICE_BUFFER);
+                //     exitLoop = MA_TRUE;
+                //     break;
+                // }
             } break;
 
 
