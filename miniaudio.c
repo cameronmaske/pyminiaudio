@@ -25,7 +25,7 @@
 /* #define MA_NO_OPENSL */
 /* #define MA_NO_JACK */
 #define MA_NO_WEBAUDIO
-// #define MA_DEBUG_OUTPUT
+#define MA_DEBUG_OUTPUT
 #include "miniaudio/miniaudio.h"
 
 
