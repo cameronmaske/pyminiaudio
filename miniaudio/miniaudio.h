@@ -9661,6 +9661,9 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
 
                 /* Map the data buffer in preparation for sending to the client. */
                 mappedBufferSizeInFramesCapture = framesAvailableCapture;
+                 #ifdef MA_DEBUG_OUTPUT
+                    /*printf("mappedBufferSizeInFramesCapture=%d,\n", mappedBufferSizeInFramesCapture);*/
+                #endif
                 hr = ma_IAudioCaptureClient_GetBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, (BYTE**)&pMappedBufferCapture, &mappedBufferSizeInFramesCapture, &flagsCapture, NULL, NULL);
                 if (FAILED(hr)) {
                     ma_post_error(pDevice, MA_LOG_LEVEL_ERROR, "[WASAPI] Failed to retrieve internal buffer from capture device in preparation for writing to the device.", MA_FAILED_TO_MAP_DEVICE_BUFFER);
