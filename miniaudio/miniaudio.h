@@ -9678,7 +9678,7 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                 if ((flagsCapture & MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0) {
                     /* Glitched. Probably due to an overrun. */
                     #ifdef MA_DEBUG_OUTPUT
-                        printf("[WASAPI] MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY\n");
+                        printf("[WASAPI] MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY (mappedBufferSizeInFramesCapture=%d)\n", mappedBufferSizeInFramesCapture);
                     #endif
                 }
 

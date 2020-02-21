@@ -38,6 +38,7 @@ if __name__ == "__main__":
                 print("Delay of {}".format(delay_ms))
                 win32event.WaitForSingleObject(evt, delay_ms)
             counter += 1
+            # sleep( / 1000)
             buffer_chunks.append(data)
 
     selected_device = choose_device()
