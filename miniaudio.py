@@ -1360,8 +1360,8 @@ class PlaybackDevice(AbstractDevice):
     def __init__(self, output_format: SampleFormat = SampleFormat.SIGNED16, nchannels: int = 2,
                  sample_rate: int = 44100, buffersize_msec: int = 200, device_id: Union[ffi.CData, None] = None,
                  callback_periods: int = 0, backends: Optional[List[Backend]] = None,
-                 thread_prio: ThreadPriority = ThreadPriority.HIGHEST, app_name: str = "") -> None:
-        super().__init__()
+                 thread_prio: ThreadPriority = ThreadPriority.HIGHEST, app_name: str = "", *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.format = output_format
         self.sample_width = _width_from_format(output_format)
         self.nchannels = nchannels
@@ -1422,8 +1422,8 @@ class DuplexStream(AbstractDevice):
                  capture_channels: int = 2, sample_rate: int = 44100, buffersize_msec: int = 200,
                  playback_device_id: Union[ffi.CData, None] = None, capture_device_id: Union[ffi.CData, None] = None,
                  callback_periods: int = 0, backends: Optional[List[Backend]] = None,
-                 thread_prio: ThreadPriority = ThreadPriority.HIGHEST, app_name: str = "") -> None:
-        super().__init__()
+                 thread_prio: ThreadPriority = ThreadPriority.HIGHEST, app_name: str = "", *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.capture_format = capture_format
         self.playback_format = playback_format
         self.sample_width = _width_from_format(capture_format)
