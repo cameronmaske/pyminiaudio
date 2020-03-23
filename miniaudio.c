@@ -21,11 +21,12 @@
 #define MINIAUDIO_IMPLEMENTATION
 /* #define MA_NO_DECODING */
 /* #define MA_NO_AAUDIO */
-
 /* #define MA_NO_OPENSL */
 /* #define MA_NO_JACK */
 #define MA_NO_WEBAUDIO
-#define MA_DEBUG_OUTPUT
+
+#define MA_LOG_LEVEL 4
+
 #include "miniaudio/miniaudio.h"
 
 

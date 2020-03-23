@@ -104,6 +104,13 @@ class SeekOrigin(Enum):
     CURRENT = lib.ma_seek_origin_current
 
 
+class LogLevel(Enum):
+    VERBOSE = lib.MA_LOG_LEVEL_VERBOSE
+    INFO = lib.MA_LOG_LEVEL_INFO
+    WARNING = lib.MA_LOG_LEVEL_WARNING
+    ERROR = lib.MA_LOG_LEVEL_ERROR
+
+
 PlaybackCallbackGeneratorType = Generator[Union[bytes, array.array], int, None]
 CaptureCallbackGeneratorType = Generator[None, Union[bytes, array.array], None]
 DuplexCallbackGeneratorType = Generator[Union[bytes, array.array], Union[bytes, array.array], None]
@@ -1173,6 +1180,7 @@ def convert_frames(from_fmt: SampleFormat, from_numchannels: int, from_samplerat
     return buffer
 
 
+GLOBAL_LOG_KEY = "__global___"
 _callback_data = {}     # type: Dict[int, Union[PlaybackDevice, CaptureDevice, DuplexStream]]
 
 # this lowlevel callback function is used in the Plaback/Capture/Duplex devices,
@@ -1197,11 +1205,28 @@ def _internal_stop_callback(device: ffi.CData) -> None:
     callback_device._stop_callback(device)
 
 
+@ffi.def_extern()
+def _internal_log_callback(context: ffi.CData, device: ffi.CData, log_level: int, message: ffi.CData) -> None:
+    message_bytes = ffi.string(message)
+    if device == ffi.NULL:
+        if _callback_data.get(GLOBAL_LOG_KEY):
+            _callback_data[GLOBAL_LOG_KEY](LogLevel(log_level), message_bytes)
+    else:
+        userdata_id = struct.unpack('q', ffi.unpack(ffi.cast("char *", device.pUserData), struct.calcsize('q')))[0]
+        callback_device = _callback_data[userdata_id]  # type: Union[PlaybackDevice, CaptureDevice, DuplexStream]
+        callback_device._log_callback(device, LogLevel(log_level), message_bytes)
+
+
+def set_global_log_callback(callback: Union[Callable, None] = None):
+    _callback_data[GLOBAL_LOG_KEY] = callback
+
+
 class AbstractDevice:
-    def __init__(self):
+    def __init__(self, log_callback: Union[Callable, None] = None):
         self.callback_generator = None          # type: Optional[GeneratorTypes]
         self.running = False
         self._device = ffi.new("ma_device *")
+        self.log_callback = log_callback
 
     def __del__(self) -> None:
         self.close()
@@ -1239,6 +1264,10 @@ class AbstractDevice:
         if _callback_data and id(self) in _callback_data:
             del _callback_data[id(self)]
 
+    def _log_callback(self, device: ffi.CData, level: LogLevel, message: bytes) -> None:
+        if self.log_callback:
+            self.log_callback(level, message)
+
     def _stop_callback(self, device: ffi.CData) -> None:
         """Stop callback is trigger when unexpectedly stopped (i.e. device disconnect)"""
         if self.stop_callback:
@@ -1250,6 +1279,7 @@ class AbstractDevice:
                       app_name: str = "") -> ffi.CData:
         context_config = lib.ma_context_config_init()
         context_config.threadPriority = thread_prio.value
+        context_config.logCallback = lib._internal_log_callback
         context = ffi.new("ma_context*")
         if app_name:
             self._context_app_name = app_name.encode()
@@ -1275,8 +1305,8 @@ class CaptureDevice(AbstractDevice):
     def __init__(self, input_format: SampleFormat = SampleFormat.SIGNED16, nchannels: int = 2,
                  sample_rate: int = 44100, buffersize_msec: int = 200, device_id: Union[ffi.CData, None] = None,
                  callback_periods: int = 0, backends: Optional[List[Backend]] = None,
-                 thread_prio: ThreadPriority = ThreadPriority.HIGHEST, app_name: str = "") -> None:
-        super().__init__()
+                 thread_prio: ThreadPriority = ThreadPriority.HIGHEST, app_name: str = "", *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.format = input_format
         self.sample_width = _width_from_format(input_format)
         self.nchannels = nchannels

@@ -4749,6 +4749,15 @@ void ma_log(ma_context* pContext, ma_device* pDevice, ma_uint32 logLevel, const 
 #endif
 }
 
+void ma_log_formatted(ma_context* pContext, ma_device* pDevice, ma_uint32 logLevel, const char* fmt, ...) {
+    char buffer[512]; // Is this a safe assumption?
+    va_list args;
+    va_start(args, fmt);
+    vsprintf(buffer, fmt, args);
+    va_end(args);
+    ma_log(pContext, pDevice, logLevel, buffer);
+}
+
 /* Posts an log message. Throw a breakpoint in here if you're needing to debug. The return value is always "resultCode". */
 ma_result ma_context_post_error(ma_context* pContext, ma_device* pDevice, ma_uint32 logLevel, const char* message, ma_result resultCode)
 {
@@ -8697,15 +8706,11 @@ ma_result ma_device_init_internal__wasapi(ma_context* pContext, ma_device_type d
 
                     /* The period needs to be clamped between minPeriodInFrames and maxPeriodInFrames. */
                     actualPeriodInFrames = ma_clamp(actualPeriodInFrames, minPeriodInFrames, maxPeriodInFrames);
-
-                #if defined(MA_DEBUG_OUTPUT)
-                    printf("[WASAPI] Trying IAudioClient3_InitializeSharedAudioStream(actualPeriodInFrames=%d)\n", actualPeriodInFrames);
-                    printf("    defaultPeriodInFrames=%d\n", defaultPeriodInFrames);
-                    printf("    fundamentalPeriodInFrames=%d\n", fundamentalPeriodInFrames);
-                    printf("    minPeriodInFrames=%d\n", minPeriodInFrames);
-                    printf("    maxPeriodInFrames=%d\n", maxPeriodInFrames);
-                #endif
-
+                    ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "[WASAPI] Trying IAudioClient3_InitializeSharedAudioStream(actualPeriodInFrames=%d)\n", actualPeriodInFrames);
+                    ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "    defaultPeriodInFrames=%d\n", defaultPeriodInFrames);
+                    ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "    fundamentalPeriodInFrames=%d\n", fundamentalPeriodInFrames);
+                    ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "    minPeriodInFrames=%d\n", minPeriodInFrames);
+                    ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "    maxPeriodInFrames=%d\n", maxPeriodInFrames);
                     /* If the client requested a largish buffer than we don't actually want to use low latency shared mode because it forces small buffers. */
                     if (actualPeriodInFrames >= desiredPeriodInFrames) {
                         /*
@@ -8717,25 +8722,17 @@ ma_result ma_device_init_internal__wasapi(ma_context* pContext, ma_device_type d
                             wasInitializedUsingIAudioClient3 = MA_TRUE;
                             pData->periodSizeInFramesOut = actualPeriodInFrames;
                             pData->bufferSizeInFramesOut = actualPeriodInFrames * pData->periodsOut;
-                        #if defined(MA_DEBUG_OUTPUT)
-                            printf("[WASAPI] Using IAudioClient3\n");
-                            printf("    periodSizeInFramesOut=%d\n", pData->periodSizeInFramesOut);
-                            printf("    bufferSizeInFramesOut=%d\n", pData->bufferSizeInFramesOut);
-                        #endif
+                            ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "[WASAPI] Using IAudioClient3\n");
+                            ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "    periodSizeInFramesOut=%d\n", pData->periodSizeInFramesOut);
+                            ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "    bufferSizeInFramesOut=%d\n", pData->bufferSizeInFramesOut);
                         } else {
-                        #if defined(MA_DEBUG_OUTPUT)
-                            printf("[WASAPI] IAudioClient3_InitializeSharedAudioStream failed. Falling back to IAudioClient.\n");
-                        #endif
+                            ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "[WASAPI] IAudioClient3_InitializeSharedAudioStream failed. Falling back to IAudioClient.\n");
                         }
                     } else {
-                    #if defined(MA_DEBUG_OUTPUT)
-                        printf("[WASAPI] Not using IAudioClient3 because the desired period size is larger than the maximum supported by IAudioClient3.\n");
-                    #endif
+                        ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "[WASAPI] Not using IAudioClient3 because the desired period size is larger than the maximum supported by IAudioClient3.\n");
                     }
                 } else {
-                #if defined(MA_DEBUG_OUTPUT)
-                    printf("[WASAPI] IAudioClient3_GetSharedModeEnginePeriod failed. Falling back to IAudioClient.\n");
-                #endif
+                    ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "[WASAPI] IAudioClient3_GetSharedModeEnginePeriod failed. Falling back to IAudioClient.\n");
                 }
 
                 ma_IAudioClient3_Release(pAudioClient3);
@@ -8743,9 +8740,7 @@ ma_result ma_device_init_internal__wasapi(ma_context* pContext, ma_device_type d
             }
         }
 #else
-    #if defined(MA_DEBUG_OUTPUT)
-        printf("[WASAPI] Not using IAudioClient3 because MA_WASAPI_NO_LOW_LATENCY_SHARED_MODE is enabled.\n");
-    #endif
+    ma_log_formatted(pContext, NULL, MA_LOG_LEVEL_INFO, "[WASAPI] Not using IAudioClient3 because MA_WASAPI_NO_LOW_LATENCY_SHARED_MODE is enabled.\n");
 #endif
 
         /* If we don't have an IAudioClient3 then we need to use the normal initialization routine. */
@@ -9299,7 +9294,6 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
     }
 
     while (ma_device__get_state(pDevice) == MA_STATE_STARTED && !exitLoop) {
-        // printf("yoyo");
         /* We may need to reroute the device. */
         if (ma_device_is_reroute_required__wasapi(pDevice, ma_device_type_playback)) {
             result = ma_device_reroute__wasapi(pDevice, ma_device_type_playback);
@@ -9416,6 +9410,7 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                         if ((flagsCapture & MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0) {
                             /* Glitched. Probably due to an overrun. */
                         #ifdef MA_DEBUG_OUTPUT
+                            ma_log(pDevice->pContext, pDevice, MA_LOG_LEVEL_WARNING, "[WASAPI] Data discontinuity (possible overrun)");
                             printf("[WASAPI] Data discontinuity (possible overrun). framesAvailableCapture=%d, mappedBufferSizeInFramesCapture=%d\n", framesAvailableCapture, mappedBufferSizeInFramesCapture);
                         #endif
 
@@ -9669,31 +9664,21 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
 
                 if ((flagsCapture & MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0) {
                     /* Glitched. Probably due to an overrun. */
-                    #ifdef MA_DEBUG_OUTPUT
-                        printf("[WASAPI] MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY (FramesInGetBuffer=%d, CurrentPadding=%d))\n", mappedBufferSizeInFramesCapture, framesAvailableCapture);
-                    #endif
+                    ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_WARNING, "[WASAPI] MA_AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY (FramesInGetBuffer=%d, CurrentPadding=%d)\n", mappedBufferSizeInFramesCapture, framesAvailableCapture);
                     do {
                         hr = ma_IAudioCaptureClient_ReleaseBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, mappedBufferSizeInFramesCapture);
                         if (FAILED(hr)) {
                             ma_post_error(pDevice, MA_LOG_LEVEL_ERROR, "[WASAPI] Failed to retrieve internal buffer from capture device in preparation for writing to the device.", MA_FAILED_TO_MAP_DEVICE_BUFFER);
                             exitLoop = MA_TRUE;
-                            #ifdef MA_DEBUG_OUTPUT
-                                printf("ReleaseBuffer (failed)");
-                            #endif
                             break;
                         }
                         framesAvailableCapture -= mappedBufferSizeInFramesCapture;
-                        #ifdef MA_DEBUG_OUTPUT
-                            printf("Frames left to release %d\n", framesAvailableCapture);
-                        #endif
+                        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_WARNING , "[WASAPI] Releasing frames in buffer (Frames=%d)\n", framesAvailableCapture);
                         if (framesAvailableCapture > 0) {
                             hr = ma_IAudioCaptureClient_GetBuffer((ma_IAudioCaptureClient*)pDevice->wasapi.pCaptureClient, (BYTE**)&pMappedBufferCapture, &mappedBufferSizeInFramesCapture, &flagsCapture, NULL, NULL);
                             if (FAILED(hr)) {
                                 ma_post_error(pDevice, MA_LOG_LEVEL_ERROR, "[WASAPI] Failed to release internal buffer from capture device after reading from the device.", MA_FAILED_TO_UNMAP_DEVICE_BUFFER);
                                 exitLoop = MA_TRUE;
-                                #ifdef MA_DEBUG_OUTPUT
-                                    printf("GetBuffer (failed)");
-                                #endif
                                 break;
                             }
                         } else {
@@ -9702,11 +9687,9 @@ ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                         }
                     } while (framesAvailableCapture > 1);
                 } else {
-                    #ifdef MA_DEBUG_OUTPUT
-                        if (flagsCapture != 0) {
-                            printf("[WASAPI] Capture Flags: %d\n", flagsCapture);
-                        }
-                    #endif
+                    if (flagsCapture != 0) {
+                        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_WARNING, "[WASAPI] Capture Flags: %d\n", flagsCapture);
+                    }
                 }
 
                 /* We should have a buffer at this point. */
@@ -26818,38 +26801,35 @@ ma_result ma_device_init(ma_context* pContext, const ma_device_config* pConfig, 
         ma_device__set_state(pDevice, MA_STATE_STOPPED);
     }
 
-
-#ifdef MA_DEBUG_OUTPUT
-    printf("[%s]\n", ma_get_backend_name(pDevice->pContext->backend));
+    ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "[%s]\n", ma_get_backend_name(pDevice->pContext->backend));
     if (pDevice->type == ma_device_type_capture || pDevice->type == ma_device_type_duplex) {
-        printf("  %s (%s)\n", pDevice->capture.name, "Capture");
-        printf("    Format:      %s -> %s\n", ma_get_format_name(pDevice->capture.format), ma_get_format_name(pDevice->capture.internalFormat));
-        printf("    Channels:    %d -> %d\n", pDevice->capture.channels, pDevice->capture.internalChannels);
-        printf("    Sample Rate: %d -> %d\n", pDevice->sampleRate, pDevice->capture.internalSampleRate);
-        printf("    Buffer Size: %d/%d (%d)\n", pDevice->capture.internalBufferSizeInFrames, pDevice->capture.internalPeriods, (pDevice->capture.internalBufferSizeInFrames / pDevice->capture.internalPeriods));
-        printf("    Conversion:\n");
-        printf("      Pre Format Conversion:    %s\n", pDevice->capture.converter.isPreFormatConversionRequired  ? "YES" : "NO");
-        printf("      Post Format Conversion:   %s\n", pDevice->capture.converter.isPostFormatConversionRequired ? "YES" : "NO");
-        printf("      Channel Routing:          %s\n", pDevice->capture.converter.isChannelRoutingRequired       ? "YES" : "NO");
-        printf("      SRC:                      %s\n", pDevice->capture.converter.isSRCRequired                  ? "YES" : "NO");
-        printf("      Channel Routing at Start: %s\n", pDevice->capture.converter.isChannelRoutingAtStart        ? "YES" : "NO");
-        printf("      Passthrough:              %s\n", pDevice->capture.converter.isPassthrough                  ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "  %s (%s)\n", pDevice->capture.name, "Capture");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "    Format:      %s -> %s\n", ma_get_format_name(pDevice->capture.format), ma_get_format_name(pDevice->capture.internalFormat));
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "    Channels:    %d -> %d\n", pDevice->capture.channels, pDevice->capture.internalChannels);
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "    Sample Rate: %d -> %d\n", pDevice->sampleRate, pDevice->capture.internalSampleRate);
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "    Buffer Size: %d/%d (%d)\n", pDevice->capture.internalBufferSizeInFrames, pDevice->capture.internalPeriods, (pDevice->capture.internalBufferSizeInFrames / pDevice->capture.internalPeriods));
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "    Conversion:\n");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      Pre Format Conversion:    %s\n", pDevice->capture.converter.isPreFormatConversionRequired  ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      Post Format Conversion:   %s\n", pDevice->capture.converter.isPostFormatConversionRequired ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      Channel Routing:          %s\n", pDevice->capture.converter.isChannelRoutingRequired       ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      SRC:                      %s\n", pDevice->capture.converter.isSRCRequired                  ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      Channel Routing at Start: %s\n", pDevice->capture.converter.isChannelRoutingAtStart        ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      Passthrough:              %s\n", pDevice->capture.converter.isPassthrough                  ? "YES" : "NO");
     }
     if (pDevice->type == ma_device_type_playback || pDevice->type == ma_device_type_duplex) {
-        printf("  %s (%s)\n", pDevice->playback.name, "Playback");
-        printf("    Format:      %s -> %s\n", ma_get_format_name(pDevice->playback.format), ma_get_format_name(pDevice->playback.internalFormat));
-        printf("    Channels:    %d -> %d\n", pDevice->playback.channels, pDevice->playback.internalChannels);
-        printf("    Sample Rate: %d -> %d\n", pDevice->sampleRate, pDevice->playback.internalSampleRate);
-        printf("    Buffer Size: %d/%d (%d)\n", pDevice->playback.internalBufferSizeInFrames, pDevice->playback.internalPeriods, (pDevice->playback.internalBufferSizeInFrames / pDevice->playback.internalPeriods));
-        printf("    Conversion:\n");
-        printf("      Pre Format Conversion:    %s\n", pDevice->playback.converter.isPreFormatConversionRequired  ? "YES" : "NO");
-        printf("      Post Format Conversion:   %s\n", pDevice->playback.converter.isPostFormatConversionRequired ? "YES" : "NO");
-        printf("      Channel Routing:          %s\n", pDevice->playback.converter.isChannelRoutingRequired       ? "YES" : "NO");
-        printf("      SRC:                      %s\n", pDevice->playback.converter.isSRCRequired                  ? "YES" : "NO");
-        printf("      Channel Routing at Start: %s\n", pDevice->playback.converter.isChannelRoutingAtStart        ? "YES" : "NO");
-        printf("      Passthrough:              %s\n", pDevice->playback.converter.isPassthrough                  ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "  %s (%s)\n", pDevice->playback.name, "Playback");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "    Format:      %s -> %s\n", ma_get_format_name(pDevice->playback.format), ma_get_format_name(pDevice->playback.internalFormat));
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "    Channels:    %d -> %d\n", pDevice->playback.channels, pDevice->playback.internalChannels);
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "    Sample Rate: %d -> %d\n", pDevice->sampleRate, pDevice->playback.internalSampleRate);
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "    Buffer Size: %d/%d (%d)\n", pDevice->playback.internalBufferSizeInFrames, pDevice->playback.internalPeriods, (pDevice->playback.internalBufferSizeInFrames / pDevice->playback.internalPeriods));
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "    Conversion:\n");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      Pre Format Conversion:    %s\n", pDevice->playback.converter.isPreFormatConversionRequired  ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      Post Format Conversion:   %s\n", pDevice->playback.converter.isPostFormatConversionRequired ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      Channel Routing:          %s\n", pDevice->playback.converter.isChannelRoutingRequired       ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      SRC:                      %s\n", pDevice->playback.converter.isSRCRequired                  ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      Channel Routing at Start: %s\n", pDevice->playback.converter.isChannelRoutingAtStart        ? "YES" : "NO");
+        ma_log_formatted(pDevice->pContext, pDevice, MA_LOG_LEVEL_INFO, "      Passthrough:              %s\n", pDevice->playback.converter.isPassthrough                  ? "YES" : "NO");
     }
-#endif
 
 
     ma_assert(ma_device__get_state(pDevice) == MA_STATE_STOPPED);

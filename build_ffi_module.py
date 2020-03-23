@@ -327,6 +327,11 @@ typedef int ma_result;
 #define MA_FAILED_TO_CREATE_EVENT                      -312
 #define MA_FAILED_TO_CREATE_THREAD                     -313
 
+/* Logging levels */
+#define MA_LOG_LEVEL_VERBOSE   4
+#define MA_LOG_LEVEL_INFO      3
+#define MA_LOG_LEVEL_WARNING   2
+#define MA_LOG_LEVEL_ERROR     1
 
 #define MA_MIN_CHANNELS                                1
 #define MA_MAX_CHANNELS                                32
@@ -548,6 +553,8 @@ typedef struct
 typedef struct
 {
     ma_thread_priority threadPriority;
+    ma_log_proc logCallback;
+
     void* pUserData;
 
     struct
@@ -727,6 +734,8 @@ typedef ma_bool32 (* ma_enum_devices_callback_proc)(ma_context* pContext, ma_dev
     extern "Python" void _internal_data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
     /* ma_stop_proc */
     extern "Python" void _internal_stop_callback(ma_device* pDevice);
+    /* ma_log_proc */
+    extern "Python" void _internal_log_callback(ma_context* pContext, ma_device* pDevice, ma_uint32 logLevel, const char* message);
     /* ma_pcm_converter_read_proc */
     extern "Python" ma_uint32 _internal_pcmconverter_read_callback(ma_pcm_converter* pConverter, void* pFramesOut, ma_uint32 frameCount, void* pUserData);
     /* decoder read and seek callbacks */
